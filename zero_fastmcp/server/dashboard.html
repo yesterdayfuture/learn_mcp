@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP 服务端仪表盘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .label {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 8px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title .icon {
+            font-size: 1.2em;
+        }
+
+        .section-count {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .item-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .item {
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+        }
+
+        .item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .item-desc {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+
+        .item-stats {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .item-stat {
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+
+        .item-stat .value {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .item-stat.success .value {
+            color: #28a745;
+        }
+
+        .item-stat.error .value {
+            color: #dc3545;
+        }
+
+        .history-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #e0e0e0;
+        }
+
+        .history-title {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 0.85em;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-time {
+            color: #999;
+        }
+
+        .history-status {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .history-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .history-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            background: #e0e0e0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6fd6;
+            transform: translateY(-2px);
+        }
+
+        .refresh-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .uptime {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9em;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading::after {
+            content: '';
+            animation: pulse 1.5s infinite;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 MCP 服务端仪表盘</h1>
+            <p class="uptime">运行时长: <span id="uptime">-</span></p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number" id="total-requests">0</div>
+                <div class="label">总请求数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="total-tools">0</div>
+                <div class="label">工具数量</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="total-prompts">0</div>
+                <div class="label">提示词数量</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="total-resources">0</div>
+                <div class="label">资源数量</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="tools">🛠️ 工具</button>
+            <button class="tab" data-tab="prompts">💬 提示词</button>
+            <button class="tab" data-tab="resources">📁 资源</button>
+        </div>
+
+        <div id="loading" class="loading">加载中...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="tools-content" class="tab-content active"></div>
+        <div id="prompts-content" class="tab-content"></div>
+        <div id="resources-content" class="tab-content"></div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="refresh-btn" onclick="refreshStats()">🔄 刷新数据</button>
+        </div>
+    </div>
+
+    <script>
+        let statsData = null;
+
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+
+            if (days > 0) return `${days}天 ${hours}小时 ${minutes}分钟`;
+            if (hours > 0) return `${hours}小时 ${minutes}分钟 ${secs}秒`;
+            if (minutes > 0) return `${minutes}分钟 ${secs}秒`;
+            return `${secs}秒`;
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString('zh-CN');
+        }
+
+        function renderToolItem(tool) {
+            return `
+                <div class="item">
+                    <div class="item-header">
+                        <div>
+                            <div class="item-name">${tool.name}</div>
+                            <div class="item-desc">${tool.description || '无描述'}</div>
+                        </div>
+                    </div>
+                    <div class="item-stats">
+                        <div class="item-stat">
+                            调用次数: <span class="value">${tool.call_count}</span>
+                        </div>
+                        <div class="item-stat success">
+                            成功: <span class="value">${tool.success_count}</span>
+                        </div>
+                        <div class="item-stat error">
+                            失败: <span class="value">${tool.error_count}</span>
+                        </div>
+                        <div class="item-stat">
+                            最后调用: <span class="value">${formatTime(tool.last_call_time)}</span>
+                        </div>
+                    </div>
+                    ${tool.recent_history && tool.recent_history.length > 0 ? `
+                        <div class="history-section">
+                            <div class="history-title">最近调用历史</div>
+                            ${tool.recent_history.map(h => `
+                                <div class="history-item">
+                                    <span class="history-time">${formatTime(h.timestamp)}</span>
+                                    <span class="history-time">${JSON.stringify(h.arguments || {}).substring(0, 50)}...</span>
+                                    <span class="history-status ${h.success ? 'success' : 'error'}">
+                                        ${h.success ? '✓ 成功' : '✗ 失败'}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderPromptItem(prompt) {
+            return `
+                <div class="item">
+                    <div class="item-header">
+                        <div>
+                            <div class="item-name">${prompt.name}</div>
+                            <div class="item-desc">${prompt.description || '无描述'}</div>
+                        </div>
+                    </div>
+                    <div class="item-stats">
+                        <div class="item-stat">
+                            调用次数: <span class="value">${prompt.call_count}</span>
+                        </div>
+                        <div class="item-stat success">
+                            成功: <span class="value">${prompt.success_count}</span>
+                        </div>
+                        <div class="item-stat error">
+                            失败: <span class="value">${prompt.error_count}</span>
+                        </div>
+                        <div class="item-stat">
+                            最后调用: <span class="value">${formatTime(prompt.last_call_time)}</span>
+                        </div>
+                    </div>
+                    ${prompt.recent_history && prompt.recent_history.length > 0 ? `
+                        <div class="history-section">
+                            <div class="history-title">最近调用历史</div>
+                            ${prompt.recent_history.map(h => `
+                                <div class="history-item">
+                                    <span class="history-time">${formatTime(h.timestamp)}</span>
+                                    <span class="history-status ${h.success ? 'success' : 'error'}">
+                                        ${h.success ? '✓ 成功' : '✗ 失败'}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderResourceItem(resource) {
+            return `
+                <div class="item">
+                    <div class="item-header">
+                        <div>
+                            <div class="item-name">${resource.uri}</div>
+                            <div class="item-desc">${resource.description || resource.name || '无描述'}</div>
+                        </div>
+                    </div>
+                    <div class="item-stats">
+                        <div class="item-stat">
+                            读取次数: <span class="value">${resource.read_count}</span>
+                        </div>
+                        <div class="item-stat success">
+                            成功: <span class="value">${resource.success_count}</span>
+                        </div>
+                        <div class="item-stat error">
+                            失败: <span class="value">${resource.error_count}</span>
+                        </div>
+                        <div class="item-stat">
+                            最后读取: <span class="value">${formatTime(resource.last_read_time)}</span>
+                        </div>
+                    </div>
+                    ${resource.recent_history && resource.recent_history.length > 0 ? `
+                        <div class="history-section">
+                            <div class="history-title">最近读取历史</div>
+                            ${resource.recent_history.map(h => `
+                                <div class="history-item">
+                                    <span class="history-time">${formatTime(h.timestamp)}</span>
+                                    <span class="history-status ${h.success ? 'success' : 'error'}">
+                                        ${h.success ? '✓ 成功' : '✗ 失败'}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderStats() {
+            if (!statsData) return;
+
+            document.getElementById('uptime').textContent = formatUptime(statsData.uptime);
+            document.getElementById('total-requests').textContent = statsData.total_requests;
+            document.getElementById('total-tools').textContent = statsData.tools.count;
+            document.getElementById('total-prompts').textContent = statsData.prompts.count;
+            document.getElementById('total-resources').textContent = statsData.resources.count;
+
+            const toolsContent = document.getElementById('tools-content');
+            const promptsContent = document.getElementById('prompts-content');
+            const resourcesContent = document.getElementById('resources-content');
+
+            if (statsData.tools.items.length === 0) {
+                toolsContent.innerHTML = '<div class="empty-state">暂无工具</div>';
+            } else {
+                toolsContent.innerHTML = `<div class="item-list">${statsData.tools.items.map(renderToolItem).join('')}</div>`;
+            }
+
+            if (statsData.prompts.items.length === 0) {
+                promptsContent.innerHTML = '<div class="empty-state">暂无提示词</div>';
+            } else {
+                promptsContent.innerHTML = `<div class="item-list">${statsData.prompts.items.map(renderPromptItem).join('')}</div>`;
+            }
+
+            if (statsData.resources.items.length === 0) {
+                resourcesContent.innerHTML = '<div class="empty-state">暂无资源</div>';
+            } else {
+                resourcesContent.innerHTML = `<div class="item-list">${statsData.resources.items.map(renderResourceItem).join('')}</div>`;
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+
+        async function refreshStats() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.disabled = true;
+            btn.textContent = '加载中...';
+
+            try {
+                const response = await fetch('/stats');
+                if (!response.ok) throw new Error('获取统计数据失败');
+
+                statsData = await response.json();
+                renderStats();
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = '错误: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 刷新数据';
+            }
+        }
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab + '-content').classList.add('active');
+            });
+        });
+
+        refreshStats();
+        setInterval(refreshStats, 10000);
+    </script>
+</body>
+</html>
